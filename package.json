@@ -1,0 +1,46 @@
+{
+  "name": "jina-reader-extension",
+  "version": "1.0.0",
+  "description": "Convert any webpage to LLM-friendly text via r.jina.ai — directly from your browser toolbar.",
+  "type": "module",
+  "main": "src/background/index.js",
+  "scripts": {
+    "test": "jest",
+    "lint": "eslint \"src/**/*.js\"",
+    "lint:fix": "eslint \"src/**/*.js\" --fix",
+    "format": "prettier --write \"src/**/*.{js,html,css}\"",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "src/**/*.{js,html,css}": [
+      "prettier --write"
+    ],
+    "src/**/*.js": [
+      "eslint --fix"
+    ]
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AhmadHassan-BTed/JinaClip-_-Copy-Page-for-LLM.git"
+  },
+  "keywords": [
+    "jina",
+    "llm",
+    "chrome-extension",
+    "reader"
+  ],
+  "author": "Open Source Contributors",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/AhmadHassan-BTed/JinaClip-_-Copy-Page-for-LLM/issues"
+  },
+  "homepage": "https://github.com/AhmadHassan-BTed/JinaClip-_-Copy-Page-for-LLM#readme",
+  "devDependencies": {
+    "@jest/globals": "^30.4.1",
+    "eslint": "^10.4.0",
+    "husky": "^9.1.7",
+    "jest": "^30.4.2",
+    "lint-staged": "^16.4.0",
+    "prettier": "^3.8.3"
+  }
+}
