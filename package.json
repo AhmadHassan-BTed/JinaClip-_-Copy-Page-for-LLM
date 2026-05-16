@@ -9,6 +9,7 @@
     "lint": "eslint \"src/**/*.js\"",
     "lint:fix": "eslint \"src/**/*.js\" --fix",
     "format": "prettier --write \"src/**/*.{js,html,css}\"",
+    "build": "node scripts/build.js",
     "prepare": "husky"
   },
   "lint-staged": {
@@ -42,5 +43,8 @@
     "jest": "^30.4.2",
     "lint-staged": "^16.4.0",
     "prettier": "^3.8.3"
+  },
+  "dependencies": {
+    "fs-extra": "^11.3.5"
   }
 }
