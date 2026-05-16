@@ -49,9 +49,9 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
  */
 async function processAndCopy(tabId, overrides = {}) {
   try {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    const tab = await chrome.tabs.get(tabId);
     if (!tab?.url || !tab.url.startsWith('http')) {
-      throw new Error('Local Reader can only process web pages (http/https). Internal browser pages are protected.');
+      throw new Error('Local Reader can only process web pages (http/https). This page is protected by browser security.');
     }
 
     NotificationUtil.setBadge(tabId, 'FETCHING');

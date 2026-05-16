@@ -1,8 +1,7 @@
 import { Logger } from '../utils/logger.js';
 
 /**
- * Advanced Local Jina Engine (v2)
- * Robust, null-safe replication of Jina Reader functionality.
+ * Advanced Local Jina Engine (v3 - Ultra-Robust)
  */
 export const LocalReaderService = {
   async parsePage(tabId, config) {
@@ -15,15 +14,18 @@ export const LocalReaderService = {
         return `![Screenshot](${dataUrl})`;
       }
 
-      // 2. Execute Local Parser
+      // 2. Execute Local Parser with explicit timeout and error handling
       const results = await chrome.scripting.executeScript({
         target: { tabId },
         func: this._engineCore,
         args: [config]
+      }).catch(err => {
+        Logger.error('Script injection failed:', err);
+        throw new Error(`Permission Denied: Browser blocked script execution on this page. (${err.message})`);
       });
 
       if (!results || !results[0] || !results[0].result) {
-        throw new Error('Local parser returned no data. Ensure the page is fully loaded.');
+        throw new Error('Local parser failed to retrieve content. Try refreshing the page.');
       }
 
       const output = results[0].result;
@@ -49,26 +51,25 @@ export const LocalReaderService = {
       const timestamp = new Date().toISOString();
 
       // --- 1. Targeted Extraction ---
-      let root = document.body;
+      let root = document.querySelector('article') || document.querySelector('main') || document.body || document.documentElement;
+
       if (cfg.targetSelector) {
         const target = document.querySelector(cfg.targetSelector);
         if (target) root = target;
       }
 
-      if (!root) return { title, url, content: '# Error: Target element not found' };
+      if (!root) throw new Error('Could not find content root (body/html).');
 
       const clone = root.cloneNode(true);
 
       // --- 2. Remove Unwanted Content ---
-      const defaultBlacklist = ['script', 'style', 'noscript', 'iframe', 'nav', 'footer', 'aside', '.ads'];
-      
+      const blacklist = ['script', 'style', 'noscript', 'iframe', 'nav', 'footer', 'aside', '.ads'];
       if (cfg.removeSelector) {
         cfg.removeSelector.split(',').forEach(s => {
           try { clone.querySelectorAll(s.trim()).forEach(el => el.remove()); } catch(e) {}
         });
       }
-      
-      defaultBlacklist.forEach(s => {
+      blacklist.forEach(s => {
         clone.querySelectorAll(s).forEach(el => el.remove());
       });
 
@@ -82,7 +83,7 @@ export const LocalReaderService = {
         if (img.src && img.src.startsWith('http')) images.push({ alt: img.alt || 'image', src: img.src });
       });
 
-      // --- 4. Simple HTML to Markdown ---
+      // --- 4. Content Conversion ---
       function nodeToMd(node) {
         let md = '';
         for (let child of node.childNodes) {
@@ -98,8 +99,7 @@ export const LocalReaderService = {
               case 'a':  md += (cfg.retainLinks === 'none' ? '' : (cfg.retainLinks === 'text' ? inner : `[${inner}](${child.href})`)); break;
               case 'img': md += (cfg.retainImages === 'none' ? '' : (cfg.retainImages === 'alt' ? `![${child.alt || ''}]` : `![${child.alt || 'img'}](${child.src})`)); break;
               case 'li':  md += `* ${inner}\n`; break;
-              case 'strong': case 'b': md += `**${inner}**`; break;
-              case 'em': case 'i': md += `*${inner}*`; break;
+              case 'code': md += `\`${inner}\``; break;
               case 'br': md += '\n'; break;
               default: md += inner;
             }
@@ -108,27 +108,21 @@ export const LocalReaderService = {
         return md;
       }
 
-      const mainContent = nodeToMd(clone).trim();
+      const mainContent = nodeToMd(clone).trim() || '_[No readable text found on this page]_';
 
       // --- 5. Generate Summaries ---
       let footers = '';
-      if (cfg.withLinksSummary || cfg.withLinksSummaryAll) {
+      if (cfg.withLinksSummary && links.length > 0) {
         footers += `\n\n---\n### 🔗 Links Summary\n`;
-        const uniqueLinks = cfg.withLinksSummaryAll ? links : [...new Map(links.map(l => [l.url, l])).values()];
+        const uniqueLinks = [...new Map(links.map(l => [l.url, l])).values()];
         uniqueLinks.forEach((l, i) => { footers += `[${i+1}] ${l.text || 'Link'}: ${l.url}\n`; });
-      }
-
-      if (cfg.withImagesSummary) {
-        footers += `\n\n---\n### 🖼️ Images Summary\n`;
-        const uniqueImages = [...new Map(images.map(img => [img.src, img])).values()];
-        uniqueImages.forEach((img, i) => { footers += `![Image ${i+1}](${img.src}) - ${img.alt}\n`; });
       }
 
       const fullMarkdown = `# ${title}\n\nURL: ${url}\n\n${mainContent}${footers}`;
 
       return { title, url, timestamp, content: fullMarkdown, links, images };
     } catch (e) {
-      return { content: `# Local Parsing Error\n${e.message}` };
+      return { content: `# Parsing Error\n${e.message}` };
     }
   }
 };
