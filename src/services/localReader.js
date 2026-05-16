@@ -522,21 +522,30 @@ function _engineCoreBody(cfg) {
 
     // ── 2. Shadow DOM flattening (optional) ─────────────────────────────────
 
-    function flattenShadowDom(root) {
-      if (!cfg.withShadowDom) return root;
-      const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT);
-      let   node;
-      while ((node = walker.nextNode())) {
-        if (node.shadowRoot) {
-          const wrapper = document.createElement('div');
-          wrapper.dataset.shadowHost = '1';
-          for (const child of [...node.shadowRoot.cloneNode(true).childNodes]) {
-            wrapper.appendChild(child);
-          }
-          node.appendChild(wrapper);
+    /**
+     * Flatten Shadow DOM by recursively injecting shadow content into a cloned tree.
+     * This avoids mutating the original page DOM.
+     */
+    function flattenShadowDom(node) {
+      if (!cfg.withShadowDom) return;
+      
+      const shadowHost = node.shadowRoot ? node : null;
+      if (shadowHost) {
+        const wrapper = document.createElement('div');
+        wrapper.dataset.shadowHost = '1';
+        wrapper.style.display = 'contents'; // Don't affect layout
+        
+        // We cannot clone ShadowRoot itself, so we clone its children
+        for (const child of shadowHost.shadowRoot.childNodes) {
+          wrapper.appendChild(child.cloneNode(true));
         }
+        node.appendChild(wrapper);
       }
-      return root;
+
+      // Recurse into children (including the ones we just added)
+      for (const child of node.children) {
+        flattenShadowDom(child);
+      }
     }
 
     // ── 3. Clone & clean ────────────────────────────────────────────────────
@@ -545,8 +554,9 @@ function _engineCoreBody(cfg) {
       ? (document.querySelector(cfg.targetSelector) || getBestRoot())
       : getBestRoot();
 
-    const root  = flattenShadowDom(rawRoot);
-    const clone = root.cloneNode(true);
+    // Clone first, THEN flatten the clone
+    const clone = rawRoot.cloneNode(true);
+    flattenShadowDom(clone);
 
     // Default junk selectors
     const JUNK = [
