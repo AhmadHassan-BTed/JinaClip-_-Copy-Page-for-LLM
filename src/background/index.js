@@ -1,4 +1,3 @@
-import { JinaApiService } from '../services/jinaApi.js';
 import { LocalReaderService } from '../services/localReader.js';
 import { StorageService } from '../services/storage.js';
 import { NotificationUtil } from '../utils/notifications.js';
@@ -9,33 +8,26 @@ import { Logger } from '../utils/logger.js';
 /**
  * Main Application Lifecycle
  */
-Logger.info('Service Worker initializing...');
+Logger.info('Local Engine initializing...');
 
-chrome.runtime.onInstalled.addListener((details) => {
-  Logger.info(`Extension installed/updated. Reason: ${details.reason}`);
+chrome.runtime.onInstalled.addListener(() => {
   ContextMenuManager.init();
 });
 
 chrome.runtime.onStartup.addListener(() => {
-  Logger.info('Browser started. Refreshing context menus...');
   ContextMenuManager.init();
 });
 
-// 1. Extension Click Handler (Direct Copy)
+// 1. Extension Click Handler
 chrome.action.onClicked.addListener(async (tab) => {
-  Logger.info('Extension icon clicked.');
-  if (tab?.url) {
-    await processAndCopy(tab.url, tab.id, {});
-  }
+  if (tab?.url) await processAndCopy(tab.id, {});
 });
 
 // 2. Keyboard Shortcut Handler
 chrome.commands.onCommand.addListener(async (command) => {
   if (command === 'copy-page') {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (tab?.url) {
-      await processAndCopy(tab.url, tab.id, {});
-    }
+    if (tab?.url) await processAndCopy(tab.id, {});
   }
 });
 
@@ -49,60 +41,54 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     return;
   }
 
-  await processAndCopy(tab.url, tab.id, overrides);
+  await processAndCopy(tab.id, overrides);
 });
 
 /**
- * Core Orchestrator: Chooses between Local and Cloud engines.
+ * Core Orchestrator: Pure Local Jina Replication
  */
-async function processAndCopy(url, tabId, overrides = {}) {
+async function processAndCopy(tabId, overrides = {}) {
   try {
     NotificationUtil.setBadge(tabId, 'FETCHING');
 
     const settings = await StorageService.getSettings();
     const config = { ...settings, ...overrides };
-    
-    // Determine engine: Defaults to local unless explicitly overridden or set in settings
-    const useCloud = (config.preferredEngine === 'jina' || overrides.engineChoice === 'jina');
-    
-    let content;
-    if (useCloud) {
-      Logger.info('Using Jina Cloud Engine...');
-      content = await JinaApiService.fetchContent(url, config);
-    } else {
-      Logger.info('Using Free Local Engine...');
-      content = await LocalReaderService.parsePage(tabId);
-    }
 
-    // Inject script to copy to clipboard
+    const content = await LocalReaderService.parsePage(tabId, config);
+
     await chrome.scripting.executeScript({
       target: { tabId },
       func: copyToClipboard,
       args: [content],
     });
 
-    Logger.info('Success! Content copied to clipboard.');
+    Logger.info('Success! Page processed locally with full Jina-parity.');
     NotificationUtil.setBadge(tabId, 'SUCCESS');
   } catch (error) {
-    Logger.error('Transformation failed', error);
+    Logger.error('Processing failed', error);
     NotificationUtil.setBadge(tabId, 'ERROR');
     NotificationUtil.showNotification('Copy Failed', error.message);
   }
 }
 
 /**
- * Maps Context Menu IDs to specific Jina API overrides.
+ * Maps Context Menu IDs to Local Engine overrides.
  */
 function mapMenuIdToOptions(id) {
   const map = {
-    'engine_local': { engineChoice: 'local' },
-    'engine_jina':  { engineChoice: 'jina' },
-    'fmt_markdown': { respondWith: 'markdown', engineChoice: 'jina' },
-    'fmt_html':     { respondWith: 'html', engineChoice: 'jina' },
-    'fmt_text':     { respondWith: 'text', engineChoice: 'jina' },
-    'fmt_screenshot': { respondWith: 'screenshot', engineChoice: 'jina' },
-    'fmt_pageshot': { respondWith: 'pageshot', engineChoice: 'jina' },
-    'fmt_json':     { acceptJson: true, engineChoice: 'jina' },
+    'fmt_markdown': { respondWith: 'markdown' },
+    'fmt_text':     { respondWith: 'text' },
+    'fmt_screenshot': { respondWith: 'screenshot' },
+    'fmt_json':     { respondWith: 'json' },
+    'img_all':      { retainImages: 'all' },
+    'img_none':     { retainImages: 'none' },
+    'img_alt':      { retainImages: 'alt' },
+    'lnk_all':      { retainLinks: 'all' },
+    'lnk_none':     { retainLinks: 'none' },
+    'lnk_text':     { retainLinks: 'text' },
+    'sum_links':    { withLinksSummary: true },
+    'sum_links_all':{ withLinksSummaryAll: true },
+    'sum_images':   { withImagesSummary: true },
     'open_settings': 'SETTINGS'
   };
   return map[id] || {};

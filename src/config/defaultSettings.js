@@ -1,46 +1,34 @@
 /**
- * Default configuration for the extension.
+ * Default configuration for the Local Jina Engine.
+ * Replicates Jina Reader API parameters locally.
  */
 export const defaultSettings = () => ({
-  // --- Processing ---
-  preferredEngine: 'local', // 'local' or 'jina'
+  // Format
+  respondWith: 'markdown', // 'markdown', 'html', 'text', 'screenshot', 'json'
   
-  // --- Jina Cloud Specific ---
-  apiKey: '',
-  respondWith: 'markdown',
-  engine: 'auto',
-  retainImages: 'all',
-  retainLinks: 'all',
-  generatedAlt: false,
+  // Images & Links
+  retainImages: 'all', // 'all', 'none', 'alt'
+  retainLinks: 'all',  // 'all', 'none', 'text'
   withImagesSummary: false,
   withLinksSummary: false,
   withLinksSummaryAll: false,
-  respondTiming: '',
-  chunking: '',
-  noCache: false,
   
-  // --- Scoping ---
+  // Selectors (Native Implementation)
   targetSelector: '',
-  waitForSelector: '',
   removeSelector: '',
+  waitForSelector: '',
+  
+  // Advanced DOM
   withIframe: false,
   withShadowDom: false,
-  chatSpaceId: '',
 
-  // --- Limits ---
+  // Limits (Simulated)
   maxTokens: '',
-  tokenBudget: '',
   timeout: 30,
-  proxyUrl: '',
-  
-  // --- Legacy mapping ---
-  defaultJsonMode: false,
-  acceptJson: false
 });
 
 export const OPTION_FIELDS = Object.keys(defaultSettings());
 export const OPTION_CHECKBOXES = new Set([
-  'generatedAlt', 'withImagesSummary', 'withLinksSummary', 
-  'withLinksSummaryAll', 'noCache', 'withIframe', 
-  'withShadowDom', 'defaultJsonMode', 'acceptJson'
+  'withImagesSummary', 'withLinksSummary', 'withLinksSummaryAll', 
+  'withIframe', 'withShadowDom'
 ]);

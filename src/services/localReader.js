@@ -1,89 +1,154 @@
 import { Logger } from '../utils/logger.js';
 
 /**
- * Service to process webpages locally without any external API calls.
+ * Advanced Local Jina Engine
+ * Replicates Jina Reader API functionality entirely in-browser.
  */
 export const LocalReaderService = {
   /**
-   * Processes the active tab's content into Markdown locally.
-   * @param {number} tabId 
-   * @returns {Promise<string>}
+   * Main entry point for local parsing.
    */
-  async parsePage(tabId) {
-    Logger.info('Executing local parsing logic...');
+  async parsePage(tabId, config) {
+    Logger.info(`Local Engine starting with format: ${config.respondWith}`);
 
-    // 1. Inject the parser script into the page
-    const results = await chrome.scripting.executeScript({
-      target: { tabId },
-      func: this._extractAndConvert
-    });
-
-    const content = results[0].result;
-    if (!content) {
-      throw new Error('Local parser failed to extract content from this page.');
+    // 1. Handle Screenshots (Native Chrome API)
+    if (config.respondWith === 'screenshot' || config.respondWith === 'pageshot') {
+      return this._takeScreenshot(tabId);
     }
 
-    return content;
+    // 2. Process DOM (Injected Script)
+    const results = await chrome.scripting.executeScript({
+      target: { tabId },
+      func: this._engineCore,
+      args: [config]
+    });
+
+    const output = results[0].result;
+
+    // 3. Format Output
+    if (config.respondWith === 'json') {
+      return JSON.stringify(output, null, 2);
+    }
+
+    return output.content;
   },
 
   /**
-   * This function runs INSIDE the webpage context.
-   * It uses a simplified version of Readability/Turndown logic.
-   * @private
+   * Internal Screenshot Logic
    */
-  _extractAndConvert() {
-    // A. Simplified Readability logic (removing noise)
-    const selectorsToRemove = [
-      'script', 'style', 'noscript', 'iframe', 'nav', 'footer', 
-      'header', 'aside', '.ads', '.sidebar', '.menu', '.social-share'
-    ];
-    
-    const clone = document.cloneNode(true);
-    selectorsToRemove.forEach(s => {
+  async _takeScreenshot(tabId) {
+    Logger.info('Capturing local screenshot...');
+    const dataUrl = await chrome.tabs.captureVisibleTab(null, { format: 'png' });
+    return `![Screenshot](${dataUrl})`;
+  },
+
+  /**
+   * The core engine logic that runs inside the page.
+   * This is where we replicate Jina's logic.
+   */
+  _engineCore(cfg) {
+    const title = document.title;
+    const url = window.location.href;
+    const timestamp = new Date().toISOString();
+
+    // --- 1. Targeted Extraction ---
+    let root = document.body;
+    if (cfg.targetSelector) {
+      const target = document.querySelector(cfg.targetSelector);
+      if (target) root = target;
+    }
+
+    const clone = root.cloneNode(true);
+
+    // --- 2. Remove Unwanted Content ---
+    const defaultBlacklist = ['script', 'style', 'noscript', 'iframe', 'nav', 'footer', 'aside'];
+    if (cfg.removeSelector) {
+      cfg.removeSelector.split(',').forEach(s => {
+        clone.querySelectorAll(s.trim()).forEach(el => el.remove());
+      });
+    }
+    defaultBlacklist.forEach(s => {
       clone.querySelectorAll(s).forEach(el => el.remove());
     });
 
-    // B. Get the "Main" content
-    // We look for common article containers, fallback to body
-    const main = clone.querySelector('article, main, .content, .post, #content') || clone.body;
-
-    // C. Very basic HTML to Markdown converter (Native JS)
-    // In a full production app, we would bundle Turndown.js here.
-    // For now, we'll use a robust recursive cleaner.
+    // --- 3. Gather Meta Information (Links & Images) ---
+    const links = [];
+    const images = [];
     
-    function toMarkdown(node) {
-      let text = '';
+    clone.querySelectorAll('a').forEach(a => {
+      if (a.href) links.push({ text: a.innerText.trim(), url: a.href });
+    });
+    
+    clone.querySelectorAll('img').forEach(img => {
+      if (img.src) images.push({ alt: img.alt || 'image', src: img.src });
+    });
+
+    // --- 4. Convert to Markdown ---
+    function nodeToMd(node) {
+      let md = '';
       for (let child of node.childNodes) {
-        if (child.nodeType === 3) { // Text
-          text += child.textContent;
-        } else if (child.nodeType === 1) { // Element
+        if (child.nodeType === 3) md += child.textContent;
+        else if (child.nodeType === 1) {
           const tag = child.tagName.toLowerCase();
-          const inner = toMarkdown(child);
+          const inner = nodeToMd(child);
           
           switch(tag) {
-            case 'h1': text += `\n# ${inner}\n`; break;
-            case 'h2': text += `\n## ${inner}\n`; break;
-            case 'h3': text += `\n### ${inner}\n`; break;
-            case 'p':  text += `\n${inner}\n`; break;
-            case 'a':  text += `[${inner}](${child.href})`; break;
-            case 'img': text += `![${child.alt || 'image'}](${child.src})`; break;
-            case 'li':  text += `* ${inner}\n`; break;
-            case 'code': text += `\`${inner}\``; break;
-            case 'pre': text += `\n\`\`\`\n${inner}\n\`\`\`\n`; break;
-            case 'strong': case 'b': text += `**${inner}**`; break;
-            case 'em': case 'i': text += `*${inner}*`; break;
-            case 'br': text += '\n'; break;
-            default: text += inner;
+            case 'h1': md += `\n# ${inner}\n`; break;
+            case 'h2': md += `\n## ${inner}\n`; break;
+            case 'h3': md += `\n### ${inner}\n`; break;
+            case 'p':  md += `\n${inner}\n`; break;
+            case 'a':  
+              if (cfg.retainLinks === 'none') break;
+              md += cfg.retainLinks === 'text' ? inner : `[${inner}](${child.href})`;
+              break;
+            case 'img': 
+              if (cfg.retainImages === 'none') break;
+              md += cfg.retainImages === 'alt' ? `![${child.alt || ''}]` : `![${child.alt || 'img'}](${child.src})`;
+              break;
+            case 'li':  md += `* ${inner}\n`; break;
+            case 'strong': case 'b': md += `**${inner}**`; break;
+            case 'em': case 'i': md += `*${inner}*`; break;
+            case 'code': md += `\`${inner}\``; break;
+            case 'pre': md += `\n\`\`\`\n${inner}\n\`\`\`\n`; break;
+            case 'br': md += '\n'; break;
+            default: md += inner;
           }
         }
       }
-      return text;
+      return md;
     }
 
-    const markdown = toMarkdown(main);
-    const title = document.title;
-    const url = window.location.href;
+    let mainContent = nodeToMd(clone).trim();
 
-    return `# ${title}\n\nSource: ${url}\n\n---\n\n${markdown.trim()}`;
+    // --- 5. Generate Summaries (Footers) ---
+    let footers = '\n\n---\n\n';
+    
+    if (cfg.withLinksSummary || cfg.withLinksSummaryAll) {
+      footers += `### 🔗 Links Summary\n`;
+      const uniqueLinks = cfg.withLinksSummaryAll ? links : [...new Map(links.map(l => [l.url, l])).values()];
+      uniqueLinks.forEach((l, i) => {
+        footers += `[${i+1}] ${l.text}: ${l.url}\n`;
+      });
+    }
+
+    if (cfg.withImagesSummary) {
+      footers += `\n### 🖼️ Images Summary\n`;
+      const uniqueImages = [...new Map(images.map(img => [img.src, img])).values()];
+      uniqueImages.forEach((img, i) => {
+        footers += `![Image ${i+1}](${img.src}) - ${img.alt}\n`;
+      });
+    }
+
+    const fullMarkdown = `# ${title}\n\nURL: ${url}\n\n${mainContent}${footers}`;
+
+    // Return structured object for JSON mode
+    return {
+      title,
+      url,
+      timestamp,
+      content: fullMarkdown,
+      links: cfg.withLinksSummary ? links : undefined,
+      images: cfg.withImagesSummary ? images : undefined
+    };
   }
 };
