@@ -8,6 +8,12 @@ export const STATUS_BADGE = {
 };
 
 export const CONTEXT_MENUS = [
+  // ── Processing Engine ──
+  { id: 'group_engine_choice', title: '🚀 Processing Engine',          parentId: null },
+  { id: 'engine_local',       title: 'Free Local (Fast & Unlimited)', parentId: 'group_engine_choice' },
+  { id: 'engine_jina',        title: 'Jina Cloud (AI Features)',      parentId: 'group_engine_choice' },
+  { id: 'sep0',               title: '-',                               parentId: null, type: 'separator' },
+
   // ── Quick actions ──
   { id: 'copy_default',       title: '⚡ Copy page (default)',         parentId: null },
   { id: 'sep1',               title: '-',                               parentId: null, type: 'separator' },
