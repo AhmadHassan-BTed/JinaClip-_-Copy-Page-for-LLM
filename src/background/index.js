@@ -1,100 +1,40 @@
 import { LocalReaderService } from '../services/localReader.js';
-import { StorageService } from '../services/storage.js';
-import { NotificationUtil } from '../utils/notifications.js';
-import { ContextMenuManager } from './contextMenus.js';
-import { copyToClipboard } from '../utils/clipboard.js';
 import { Logger } from '../utils/logger.js';
 
 /**
- * Main Application Lifecycle
+ * Main Application Lifecycle (v7 Integration)
+ * All logic is now delegated to the advanced LocalReaderService.
  */
-Logger.info('Local Engine initializing...');
+Logger.info('Jina Reader (Local v7) initializing...');
 
-chrome.runtime.onInstalled.addListener(() => {
-  ContextMenuManager.init();
+// ── 1. Lifecycle Events ───────────────────────────────────────────────────
+
+chrome.runtime.onInstalled.addListener((details) => {
+  Logger.info(`Extension installed/updated: ${details.reason}`);
+  LocalReaderService.setupContextMenus();
 });
 
 chrome.runtime.onStartup.addListener(() => {
-  ContextMenuManager.init();
+  LocalReaderService.setupContextMenus();
 });
 
-// 1. Extension Click Handler
-chrome.action.onClicked.addListener(async (tab) => {
-  if (tab?.url) await processAndCopy(tab.id, {});
+// ── 2. Click & Keyboard Events ────────────────────────────────────────────
+
+// Left-click on extension icon -> Quick Markdown Copy
+chrome.action.onClicked.addListener((tab) => {
+  LocalReaderService.handleIconClick(tab);
 });
 
-// 2. Keyboard Shortcut Handler
+// Keyboard Shortcut (Alt+Shift+J) -> Quick Markdown Copy
 chrome.commands.onCommand.addListener(async (command) => {
   if (command === 'copy-page') {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (tab?.url) await processAndCopy(tab.id, {});
+    if (tab) LocalReaderService.handleIconClick(tab);
   }
 });
 
-// 3. Context Menu Click Handler
-chrome.contextMenus.onClicked.addListener(async (info, tab) => {
-  if (!tab?.url) return;
+// ── 3. Context Menu Events ────────────────────────────────────────────────
 
-  const overrides = mapMenuIdToOptions(info.menuItemId);
-  if (overrides === 'SETTINGS') {
-    chrome.runtime.openOptionsPage();
-    return;
-  }
-
-  await processAndCopy(tab.id, overrides);
+chrome.contextMenus.onClicked.addListener((info, tab) => {
+  LocalReaderService.handleContextMenuClick(info, tab);
 });
-
-/**
- * Core Orchestrator: Pure Local Jina Replication
- */
-async function processAndCopy(tabId, overrides = {}) {
-  try {
-    const tab = await chrome.tabs.get(tabId);
-    if (!tab?.url || !tab.url.startsWith('http')) {
-      throw new Error('Local Reader can only process web pages (http/https). This page is protected by browser security.');
-    }
-
-    NotificationUtil.setBadge(tabId, 'FETCHING');
-
-    const settings = await StorageService.getSettings();
-    const config = { ...settings, ...overrides };
-
-    const content = await LocalReaderService.parsePage(tabId, config);
-
-    await chrome.scripting.executeScript({
-      target: { tabId },
-      func: copyToClipboard,
-      args: [content],
-    });
-
-    Logger.info('Success! Page processed locally with full Jina-parity.');
-    NotificationUtil.setBadge(tabId, 'SUCCESS');
-  } catch (error) {
-    Logger.error('Processing failed', error);
-    NotificationUtil.setBadge(tabId, 'ERROR');
-    NotificationUtil.showNotification('Copy Failed', error.message);
-  }
-}
-
-/**
- * Maps Context Menu IDs to Local Engine overrides.
- */
-function mapMenuIdToOptions(id) {
-  const map = {
-    'fmt_markdown': { respondWith: 'markdown' },
-    'fmt_text':     { respondWith: 'text' },
-    'fmt_screenshot': { respondWith: 'screenshot' },
-    'fmt_json':     { respondWith: 'json' },
-    'img_all':      { retainImages: 'all' },
-    'img_none':     { retainImages: 'none' },
-    'img_alt':      { retainImages: 'alt' },
-    'lnk_all':      { retainLinks: 'all' },
-    'lnk_none':     { retainLinks: 'none' },
-    'lnk_text':     { retainLinks: 'text' },
-    'sum_links':    { withLinksSummary: true },
-    'sum_links_all':{ withLinksSummaryAll: true },
-    'sum_images':   { withImagesSummary: true },
-    'open_settings': 'SETTINGS'
-  };
-  return map[id] || {};
-}
