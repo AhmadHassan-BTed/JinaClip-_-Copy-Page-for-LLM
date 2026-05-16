@@ -1,125 +1,140 @@
 import { Logger } from '../utils/logger.js';
 
 /**
- * Advanced Local Jina Engine (v4 - Extreme Reliability)
+ * Advanced Local Jina Engine (v5 - Intelligence Mode)
+ * Uses heuristic scoring to extract "Clean" content only.
  */
 export const LocalReaderService = {
   async parsePage(tabId, config) {
-    Logger.info(`Local Engine (v4) initiating for tab ${tabId}...`);
+    Logger.info(`Local Engine (v5) Intelligence Mode starting...`);
 
     try {
-      // 1. Handle Screenshots
       if (config.respondWith === 'screenshot' || config.respondWith === 'pageshot') {
         const dataUrl = await chrome.tabs.captureVisibleTab(null, { format: 'png' });
         return `![Screenshot](${dataUrl})`;
       }
 
-      // 2. Execute Local Parser
       const results = await chrome.scripting.executeScript({
         target: { tabId },
         func: _engineCoreBody,
         args: [config]
       });
 
-      Logger.debug('Raw results from script injection:', results);
-
       if (!results || !results[0] || results[0].result === undefined) {
-        throw new Error('The browser returned an empty result. Please try refreshing the webpage you want to copy.');
+        throw new Error('Local engine failed to extract content.');
       }
 
       const output = results[0].result;
-      
-      // If the engine itself returned an error object
-      if (output.error) {
-        throw new Error(`Parser Error: ${output.error}`);
-      }
+      if (output.error) throw new Error(output.error);
 
-      if (config.respondWith === 'json') {
-        return JSON.stringify(output, null, 2);
-      }
-
-      return output.content || '# No Content Extracted';
+      if (config.respondWith === 'json') return JSON.stringify(output, null, 2);
+      return output.content || '# No Content Found';
     } catch (err) {
-      Logger.error('Local Engine v4 Error:', err);
+      Logger.error('Local Engine v5 Error:', err);
       throw err;
     }
   }
 };
 
 /**
- * This function is converted to a string and injected into the page.
- * It MUST be self-contained.
+ * Injected Script: Intelligence Mode
  */
 function _engineCoreBody(cfg) {
-  console.log('[LocalReader] Core engine starting inside page context...');
-  
   try {
     const title = document.title || 'Untitled Page';
     const url = window.location.href;
-    const timestamp = new Date().toISOString();
+    
+    // 1. Scoring Engine: Find the "best" content container
+    function getBestRoot() {
+      const candidates = document.querySelectorAll('div, section, article, main, table');
+      let best = document.body;
+      let maxScore = 0;
 
-    // 1. Find Root
-    let root = document.querySelector('article') || 
-               document.querySelector('main') || 
-               document.querySelector('.content') ||
-               document.body;
+      candidates.forEach(el => {
+        const text = el.innerText || '';
+        const links = el.querySelectorAll('a').length;
+        if (text.length < 100) return; // Too small
 
-    if (!root) {
-      console.warn('[LocalReader] No body or content found.');
-      return { error: 'Document body not found. Is the page loaded?' };
+        // Score = Text length minus penalty for too many links
+        // (This naturally ignores Nav bars and Link lists)
+        let score = text.length / (links > 0 ? links * 0.5 : 1);
+        
+        // Bonus for semantic tags
+        if (['article', 'main'].includes(el.tagName.toLowerCase())) score *= 2;
+
+        if (score > maxScore) {
+          maxScore = score;
+          best = el;
+        }
+      });
+      return best;
     }
 
+    const root = cfg.targetSelector ? (document.querySelector(cfg.targetSelector) || getBestRoot()) : getBestRoot();
     const clone = root.cloneNode(true);
 
-    // 2. Clean
-    const blacklist = ['script', 'style', 'noscript', 'iframe', 'nav', 'footer', 'aside', '.ads'];
-    blacklist.forEach(s => {
-      clone.querySelectorAll(s).forEach(el => el.remove());
+    // 2. Aggressive Cleaning
+    const junk = [
+      'script', 'style', 'nav', 'footer', 'aside', '.ads', '.sidebar', 
+      '#header', '.menu', 'noscript', '.social', '.sharing'
+    ];
+    junk.forEach(s => clone.querySelectorAll(s).forEach(el => el.remove()));
+    
+    // Special: Remove tiny "utility" links like [hide], [login], [vote]
+    clone.querySelectorAll('a').forEach(a => {
+      if (a.innerText.trim().length < 2 && !a.querySelector('img')) a.remove();
+      const text = a.innerText.toLowerCase();
+      if (['hide', 'delete', 'report', 'flag', 'login'].includes(text)) a.remove();
     });
 
-    if (cfg.removeSelector) {
-      cfg.removeSelector.split(',').forEach(s => {
-        try { clone.querySelectorAll(s.trim()).forEach(el => el.remove()); } catch(e) {}
-      });
-    }
-
-    // 3. Simple Markdown Converter
-    function toMd(node) {
+    // 3. Smart Markdown Converter
+    function nodeToMd(node, depth = 0) {
       let md = '';
+      const blockTags = ['p', 'div', 'section', 'article', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'tr'];
+      
       for (let child of node.childNodes) {
-        if (child.nodeType === 3) md += child.textContent;
-        else if (child.nodeType === 1) {
+        if (child.nodeType === 3) {
+          md += child.textContent.replace(/\s+/g, ' ');
+        } else if (child.nodeType === 1) {
           const tag = child.tagName.toLowerCase();
-          const inner = toMd(child);
+          let inner = nodeToMd(child, depth + 1).trim();
+          if (!inner && tag !== 'img' && tag !== 'br') continue;
+
           switch(tag) {
             case 'h1': md += `\n# ${inner}\n`; break;
             case 'h2': md += `\n## ${inner}\n`; break;
             case 'h3': md += `\n### ${inner}\n`; break;
+            case 'h4': case 'h5': case 'h6': md += `\n#### ${inner}\n`; break;
             case 'p':  md += `\n${inner}\n`; break;
-            case 'a':  md += (cfg.retainLinks === 'none' ? '' : `[${inner}](${child.href})`); break;
-            case 'img': md += (cfg.retainImages === 'none' ? '' : `![${child.alt || 'img'}](${child.src})`); break;
-            case 'li':  md += `* ${inner}\n`; break;
-            case 'code': md += `\`${inner}\``; break;
+            case 'a':  md += `[${inner}](${child.href})`; break;
+            case 'img': md += `![${child.alt || 'img'}](${child.src})`; break;
+            case 'li':  md += `\n* ${inner}`; break;
+            case 'code': md += ` \`${inner}\` `; break;
+            case 'pre': md += `\n\`\`\`\n${inner}\n\`\`\`\n`; break;
             case 'br': md += '\n'; break;
-            default: md += inner;
+            case 'table': md += `\n${inner}\n`; break;
+            case 'tr': md += `\n${inner}`; break;
+            case 'td': case 'th': md += ` | ${inner}`; break;
+            default:
+              md += blockTags.includes(tag) ? `\n${inner}\n` : inner;
           }
         }
       }
       return md;
     }
 
-    const mainContent = toMd(clone).trim() || '_(No readable text content found)_';
-    const fullMarkdown = `# ${title}\n\nURL: ${url}\n\n${mainContent}`;
+    const rawMd = nodeToMd(clone);
+    const cleanedMd = rawMd
+      .replace(/\n{3,}/g, '\n\n') // Fix excessive spacing
+      .replace(/^[ \t]+|[ \t]+$/gm, '') // Trim lines
+      .trim();
 
-    console.log('[LocalReader] Extraction successful.');
     return {
       title,
       url,
-      timestamp,
-      content: fullMarkdown
+      content: `# ${title}\n\nURL: ${url}\n\n${cleanedMd}`
     };
   } catch (e) {
-    console.error('[LocalReader] Critical Error:', e);
-    return { error: e.message };
+    return { error: `Intelligence Engine Error: ${e.message}` };
   }
 }
