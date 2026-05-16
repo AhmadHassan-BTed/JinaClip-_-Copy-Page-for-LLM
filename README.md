@@ -1,80 +1,45 @@
-# Jina Reader — Chrome Extension
+# Jina Reader Browser Extension (Official)
 
-Convert any webpage to LLM-friendly text via [r.jina.ai](https://r.jina.ai) — directly from your browser toolbar.
+[![Chrome Web Store](https://img.shields.io/badge/Chrome-Web_Store-green.svg)](https://chrome.google.com/webstore)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-## Features
+Transform any webpage into LLM-friendly Markdown with a single click. **JinaClip** leverages the power of `r.jina.ai` to provide clean, structured content for your AI workflows.
 
-- **One-click copy** — click the toolbar icon to instantly copy the current page as clean markdown. No popup required!
-- **Keyboard shortcut** — `Alt+Shift+J` copies the page instantly.
-- **Right-click context menu** — every Jina Reader option exposed as a submenu:
-  - Response format (Markdown, HTML, Plain text, Screenshot, Pageshot, JSON)
-  - Fetch engine (Auto / Browser / Curl)
-  - Image handling (keep all / alt text only / drop / VLM-generate captions)
-  - Link handling (keep all / text only / drop / GPT-OSS citation format)
-  - Summary footers (links, all-links, images)
-  - Response timing (html / visible-content / mutation-idle / resource-idle / media-idle / network-idle)
-  - Markdown chunking (h1–h5, structured s1–s5)
-  - Advanced DOM tracking (iframes, shadow dom)
-  - Cache bypass
-- **Settings page** — persistent defaults for every Jina header option
-- **Badge feedback** — `…` while fetching, `✓` on success, `!` on error
+## 🚀 Key Features
 
-## Installation (Developer Mode)
+- **Instant Conversion:** One-click copy to clipboard using Jina Reader's optimized Markdown output.
+- **Full API Coverage:** Access every Jina Reader header feature (VLM image captions, JSON responses, specific element targeting, etc.).
+- **Smart Orchestration:** Automatically handles complex page structures, including iframes and shadow DOM.
+- **Productivity First:** Custom keyboard shortcuts (`Alt+Shift+J`) and a deep context menu for power users.
+- **Privacy Conscious:** Zero tracking. Your API keys are stored locally and securely in your browser's sync storage.
 
-1. Clone / download this folder.
-2. Open Chrome and go to `chrome://extensions/`.
-3. Enable **Developer mode** (top-right toggle).
-4. Click **Load unpacked** and select this folder.
-5. Pin the extension from the puzzle-piece menu.
+## 🛠 Architecture
 
-## Usage
+The extension is built with a **Service-Oriented Architecture (SOA)** using native ES modules for maximum performance and zero-coupling.
 
-| Action | Result |
-|--------|--------|
-| Click toolbar icon | Copies current page as LLM-friendly text immediately |
-| `Alt+Shift+J` | Copies immediately |
-| Right-click toolbar icon | Context menu with all Jina options |
-| Right-click > Options | Opens Settings page for persistent defaults |
+- **Services:** Decoupled logic for API interaction (`JinaApiService`) and persistent storage (`StorageService`).
+- **Utilities:** Modular helpers for notifications, clipboard interaction, and UI state.
+- **Config-Driven:** Centralized configuration for easy maintenance and feature flagging.
 
-## Supported Jina Headers
+## 📦 Installation (Development Mode)
 
-| Header | Menu | Settings |
-|--------|-------------|----------|
-| `X-Return-Format` | ✓ | ✓ |
-| `Accept: application/json` | ✓ | ✓ |
-| `X-Engine` | ✓ | ✓ |
-| `X-Retain-Images` | ✓ | ✓ |
-| `X-With-Generated-Alt` | ✓ | ✓ |
-| `X-With-Images-Summary` | ✓ | ✓ |
-| `X-Retain-Links` | ✓ | ✓ |
-| `X-With-Links-Summary` | ✓ | ✓ |
-| `X-With-Links-Summary: all` | ✓ | ✓ |
-| `X-Respond-Timing` | ✓ | ✓ |
-| `X-Markdown-Chunking` | ✓ | ✓ |
-| `X-No-Cache` | ✓ | ✓ |
-| `X-With-Iframe` | ✓ | ✓ |
-| `X-With-Shadow-Dom` | ✓ | ✓ |
-| `X-Remove-Selector` | | ✓ |
-| `X-Chat-Space-Id` | | ✓ |
-| `X-Max-Tokens` | | ✓ |
-| `X-Token-Budget` | | ✓ |
-| `X-Target-Selector` | | ✓ |
-| `X-Wait-For-Selector` | | ✓ |
-| `X-Timeout` | | ✓ |
-| `X-Proxy-Url` | | ✓ |
-| `Authorization: Bearer` | | ✓ |
+1. Clone this repository.
+2. Navigate to `chrome://extensions/` in your browser.
+3. Enable **Developer mode**.
+4. Click **Load unpacked** and select the `extension/` directory.
 
-## File Structure
+## 📖 Usage
 
-```
-JinaClip - Copy Page for LLM/
-├── manifest.json       # MV3 manifest
-├── background.js       # Service worker — fetch, clipboard, context menus, shortcuts
-├── options.html/css/js # Settings page
-├── icons/              # 16/32/48/128 px icons
-└── README.md
-```
+| Action | Outcome |
+|---|---|
+| **Left-Click Icon** | Instantly copies current page to clipboard. |
+| `Alt+Shift+J` | Instant copy (background). |
+| **Right-Click Icon** | Advanced options (Format, Engine, Images, etc.). |
+| **Options Page** | Configure default headers and API keys. |
 
-## License
+## 🤝 Contributing
 
-MIT — feel free to fork and self-host.
+We welcome contributions! Please see our [Contributing Guide](docs/contributing.md) for details on our modular architecture and coding standards.
+
+---
+Maintained by the Jina AI Community.

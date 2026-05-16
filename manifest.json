@@ -15,7 +15,7 @@
     "https://r.jina.ai/*",
     "https://s.jina.ai/*"
   ],
-  "options_page": "options.html",
+  "options_page": "src/options/options.html",
   "action": {
     "default_icon": {
       "16": "icons/icon16.png",
@@ -32,7 +32,8 @@
     "128": "icons/icon128.png"
   },
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "src/background/index.js",
+    "type": "module"
   },
   "commands": {
     "copy-page": {
