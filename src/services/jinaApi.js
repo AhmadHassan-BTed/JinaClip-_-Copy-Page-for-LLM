@@ -1,4 +1,5 @@
 import { JINA_API_BASE } from '../config/constants.js';
+import { Logger } from '../utils/logger.js';
 
 /**
  * Service to interact with the Jina Reader API.
@@ -14,11 +15,16 @@ export const JinaApiService = {
     const jinaUrl = `${JINA_API_BASE}${url}`;
     const headers = this._buildHeaders(options);
 
+    Logger.debug(`Executing fetch to: ${jinaUrl}`, { headers });
+
     const response = await fetch(jinaUrl, { headers });
 
     if (!response.ok) {
+      Logger.error(`API response was not OK: ${response.status} ${response.statusText}`);
       throw new Error(`Jina Reader Error: ${response.status} ${response.statusText}`);
     }
+
+    Logger.info(`API Request successful: ${response.status}`);
 
     if (options.acceptJson) {
       const json = await response.json();

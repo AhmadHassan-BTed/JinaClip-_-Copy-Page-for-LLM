@@ -3,25 +3,38 @@ import { StorageService } from '../services/storage.js';
 import { NotificationUtil } from '../utils/notifications.js';
 import { ContextMenuManager } from './contextMenus.js';
 import { copyToClipboard } from '../utils/clipboard.js';
+import { Logger } from '../utils/logger.js';
 
 /**
- * Main Application Logic
+ * Main Application Lifecycle
  */
+Logger.info('Service Worker initializing...');
 
 // Initialize context menus on install/startup
-chrome.runtime.onInstalled.addListener(() => {
+chrome.runtime.onInstalled.addListener((details) => {
+  Logger.info(`Extension installed/updated. Reason: ${details.reason}`);
+  ContextMenuManager.init();
+});
+
+// Also ensure menus are created on startup (backup)
+chrome.runtime.onStartup.addListener(() => {
+  Logger.info('Browser started. Refreshing context menus...');
   ContextMenuManager.init();
 });
 
 // 1. Extension Click Handler (Direct Copy)
 chrome.action.onClicked.addListener(async (tab) => {
+  Logger.info('Extension icon clicked for tab:', tab.id);
   if (tab?.url) {
     await processAndCopy(tab.url, tab.id, {});
+  } else {
+    Logger.warn('No URL found for active tab.');
   }
 });
 
 // 2. Keyboard Shortcut Handler
 chrome.commands.onCommand.addListener(async (command) => {
+  Logger.info(`Command received: ${command}`);
   if (command === 'copy-page') {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (tab?.url) {
@@ -32,14 +45,20 @@ chrome.commands.onCommand.addListener(async (command) => {
 
 // 3. Context Menu Click Handler
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
-  if (!tab?.url) return;
+  Logger.info(`Context menu item clicked: ${info.menuItemId}`);
+  if (!tab?.url) {
+    Logger.warn('No tab URL found for context menu action.');
+    return;
+  }
 
   const overrides = mapMenuIdToOptions(info.menuItemId);
   if (overrides === 'SETTINGS') {
+    Logger.info('Opening options page...');
     chrome.runtime.openOptionsPage();
     return;
   }
 
+  Logger.debug('Applying overrides from context menu:', overrides);
   await processAndCopy(tab.url, tab.id, overrides);
 });
 
@@ -48,23 +67,28 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
  */
 async function processAndCopy(url, tabId, overrides = {}) {
   try {
+    Logger.info(`Starting Jina transformation for: ${url}`);
     NotificationUtil.setBadge(tabId, 'FETCHING');
 
     const settings = await StorageService.getSettings();
     const config = { ...settings, ...overrides };
+    Logger.debug('Resolved configuration:', config);
 
     const content = await JinaApiService.fetchContent(url, config);
+    Logger.info(`Successfully fetched content. Length: ${content.length} characters.`);
 
-    // Inject script to copy to clipboard (Chrome requires tab context for navigator.clipboard)
+    // Inject script to copy to clipboard
+    Logger.debug('Injecting clipboard script into tab:', tabId);
     await chrome.scripting.executeScript({
       target: { tabId },
       func: copyToClipboard,
       args: [content],
     });
 
+    Logger.info('Content successfully copied to clipboard.');
     NotificationUtil.setBadge(tabId, 'SUCCESS');
   } catch (error) {
-    console.error('JinaClip Error:', error);
+    Logger.error('Transformation process failed', error);
     NotificationUtil.setBadge(tabId, 'ERROR');
     NotificationUtil.showNotification('Copy Failed', error.message);
   }
