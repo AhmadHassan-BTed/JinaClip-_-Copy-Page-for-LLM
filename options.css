@@ -1,0 +1,124 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:      #0d0f14;
+  --surface: #151820;
+  --border:  #252936;
+  --primary: #6e7cf5;
+  --green:   #3ecf8e;
+  --text:    #e2e5f0;
+  --muted:   #7c839e;
+  --radius:  10px;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  font-size: 14px;
+  color: var(--text);
+  background: var(--bg);
+}
+
+.page {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 32px 20px 60px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+/* Header */
+.page-header {
+  display: flex; align-items: center; gap: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+.logo-mark {
+  width: 44px; height: 44px; flex-shrink: 0;
+  background: var(--primary);
+  border-radius: 10px;
+  display: grid; place-items: center;
+  font-size: 22px; font-weight: 800; color: #fff;
+}
+h1 { font-size: 18px; font-weight: 700; }
+.sub { font-size: 12px; color: var(--muted); margin-top: 3px; }
+
+/* Saved banner */
+.saved-banner {
+  background: #1a2e23; border: 1px solid var(--green);
+  color: var(--green); border-radius: var(--radius);
+  padding: 10px 16px; font-size: 13px; font-weight: 500;
+}
+.hidden { display: none !important; }
+
+/* Cards */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.card h2 {
+  font-size: 12px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: .07em;
+  color: var(--muted);
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.field {
+  padding: 12px 16px;
+  display: flex; flex-direction: column; gap: 6px;
+  border-bottom: 1px solid var(--border);
+}
+.field:last-child { border-bottom: none; }
+.field.row { flex-direction: row; align-items: center; }
+label {
+  font-size: 13px; font-weight: 500; color: var(--text);
+}
+.hint { font-weight: 400; color: var(--muted); font-size: 12px; }
+.tip  { font-size: 11px; color: var(--muted); }
+.tip a { color: var(--primary); text-decoration: none; }
+.tip a:hover { text-decoration: underline; }
+
+input[type="text"],
+input[type="password"],
+input[type="number"],
+select {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 6px;
+  padding: 7px 10px;
+  font-size: 13px;
+  width: 100%;
+}
+input:focus, select:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+/* Toggle */
+.toggle-label {
+  display: flex; align-items: center; gap: 10px;
+  cursor: pointer; user-select: none;
+  font-weight: 400; color: var(--text);
+}
+.toggle-label input[type="checkbox"] {
+  width: 16px; height: 16px;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+
+/* Actions */
+.actions { display: flex; gap: 10px; }
+.btn-save {
+  background: var(--primary); color: #fff;
+  border: none; border-radius: 8px;
+  padding: 10px 24px; font-size: 13px; font-weight: 600;
+  cursor: pointer; transition: opacity .15s;
+}
+.btn-save:hover { opacity: .9; }
+.btn-reset {
+  background: var(--surface); color: var(--muted);
+  border: 1px solid var(--border); border-radius: 8px;
+  padding: 10px 20px; font-size: 13px;
+  cursor: pointer; transition: color .15s, border-color .15s;
+}
+.btn-reset:hover { color: var(--text); border-color: var(--muted); }

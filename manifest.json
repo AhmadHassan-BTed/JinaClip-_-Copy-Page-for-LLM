@@ -1,0 +1,46 @@
+{
+  "manifest_version": 3,
+  "name": "Jina Reader — LLM-Friendly Page Copier",
+  "version": "1.0.0",
+  "description": "Convert any webpage to LLM-friendly text using Jina Reader (r.jina.ai). Click to copy, right-click for advanced options.",
+  "permissions": [
+    "activeTab",
+    "clipboardWrite",
+    "contextMenus",
+    "storage",
+    "notifications",
+    "scripting"
+  ],
+  "host_permissions": [
+    "https://r.jina.ai/*",
+    "https://s.jina.ai/*"
+  ],
+  "options_page": "options.html",
+  "action": {
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    },
+    "default_title": "Jina Reader — Click to copy page as LLM-friendly text"
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "commands": {
+    "copy-page": {
+      "suggested_key": {
+        "default": "Alt+Shift+J",
+        "mac": "Alt+Shift+J"
+      },
+      "description": "Copy current page as LLM-friendly text via Jina Reader"
+    }
+  }
+}

@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Jina Reader — Settings</title>
+  <link rel="stylesheet" href="options.css" />
+</head>
+<body>
+  <div class="page">
+    <header class="page-header">
+      <div class="logo-mark">J</div>
+      <div>
+        <h1>Jina Reader Settings</h1>
+        <p class="sub">Default options applied to every fetch. Can be overridden per-request from the popup.</p>
+      </div>
+    </header>
+
+    <div class="saved-banner hidden" id="savedBanner">✓ Settings saved</div>
+
+    <form id="settingsForm">
+
+      <!-- API Key -->
+      <section class="card">
+        <h2>Authentication</h2>
+        <div class="field">
+          <label for="apiKey">API Key <span class="hint">(optional — increases rate limits)</span></label>
+          <input type="password" id="apiKey" placeholder="jina_xxxxxxxxxxxxxxxx" autocomplete="off" />
+          <p class="tip">Get a free key at <a href="https://jina.ai/reader" target="_blank">jina.ai/reader</a></p>
+        </div>
+      </section>
+
+      <!-- Response format -->
+      <section class="card">
+        <h2>Response Format</h2>
+        <div class="field">
+          <label for="respondWith">Respond with</label>
+          <select id="respondWith">
+            <option value="markdown">Markdown (default)</option>
+            <option value="html">HTML — raw documentElement.outerHTML</option>
+            <option value="text">Text — document.body.innerText</option>
+            <option value="screenshot">Screenshot URL (viewport)</option>
+            <option value="pageshot">Pageshot URL (full page)</option>
+          </select>
+        </div>
+        <div class="field row">
+          <label class="toggle-label">
+            <input type="checkbox" id="defaultJsonMode" />
+            JSON mode (Accept: application/json)
+          </label>
+        </div>
+      </section>
+
+      <!-- Engine -->
+      <section class="card">
+        <h2>Fetch Engine</h2>
+        <div class="field">
+          <label for="engine">Engine</label>
+          <select id="engine">
+            <option value="auto">Auto — combined browser + curl (default)</option>
+            <option value="browser">Browser — headless Chrome, full JS</option>
+            <option value="curl">Curl — lightweight, no JS</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="proxyUrl">Proxy URL <span class="hint">(your own proxy)</span></label>
+          <input type="text" id="proxyUrl" placeholder="https://user:pass@host:port" />
+          <p class="tip">Supports http, https, socks4, socks5</p>
+        </div>
+      </section>
+
+      <!-- Images -->
+      <section class="card">
+        <h2>Images</h2>
+        <div class="field">
+          <label for="retainImages">Retain images</label>
+          <select id="retainImages">
+            <option value="all">All — keep ![alt](url) markdown (default)</option>
+            <option value="alt">Alt text only — no URLs</option>
+            <option value="none">None — drop all images</option>
+          </select>
+        </div>
+        <div class="field row">
+          <label class="toggle-label">
+            <input type="checkbox" id="generatedAlt" />
+            Generate alt captions with VLM (X-With-Generated-Alt)
+          </label>
+        </div>
+        <div class="field row">
+          <label class="toggle-label">
+            <input type="checkbox" id="withImagesSummary" />
+            Append deduplicated images summary footer
+          </label>
+        </div>
+      </section>
+
+      <!-- Links -->
+      <section class="card">
+        <h2>Links</h2>
+        <div class="field">
+          <label for="retainLinks">Retain links</label>
+          <select id="retainLinks">
+            <option value="all">All — keep [text](url) markdown (default)</option>
+            <option value="text">Text only — drop URLs</option>
+            <option value="none">None — drop all links</option>
+            <option value="gpt-oss">GPT-OSS citation format 【id†…】</option>
+          </select>
+        </div>
+        <div class="field row">
+          <label class="toggle-label">
+            <input type="checkbox" id="withLinksSummary" />
+            Append deduplicated links summary footer
+          </label>
+        </div>
+        <div class="field row">
+          <label class="toggle-label">
+            <input type="checkbox" id="withLinksSummaryAll" />
+            Append ALL links (including duplicates) footer
+          </label>
+        </div>
+      </section>
+
+      <!-- Timing -->
+      <section class="card">
+        <h2>Response Timing</h2>
+        <div class="field">
+          <label for="respondTiming">Respond timing</label>
+          <select id="respondTiming">
+            <option value="">Auto (Reader decides)</option>
+            <option value="html">html — return as soon as raw HTML lands</option>
+            <option value="visible-content">visible-content — lowest latency with text</option>
+            <option value="mutation-idle">mutation-idle — DOM settled ≥0.2s (good for SPAs)</option>
+            <option value="resource-idle">resource-idle — content resources done ≥0.5s</option>
+            <option value="media-idle">media-idle — media also finished loading</option>
+            <option value="network-idle">network-idle — full networkidle0 (slowest)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="timeout">Timeout <span class="hint">(seconds, max 180)</span></label>
+          <input type="number" id="timeout" min="1" max="180" placeholder="e.g. 30" />
+        </div>
+      </section>
+
+      <!-- Selectors -->
+      <section class="card">
+        <h2>CSS Selectors</h2>
+        <div class="field">
+          <label for="targetSelector">Target selector <span class="hint">(X-Target-Selector)</span></label>
+          <input type="text" id="targetSelector" placeholder="e.g. #article-body, .main-content" />
+          <p class="tip">Reader returns only content inside the matched element.</p>
+        </div>
+        <div class="field">
+          <label for="waitForSelector">Wait for selector <span class="hint">(X-Wait-For-Selector)</span></label>
+          <input type="text" id="waitForSelector" placeholder="e.g. .content-loaded" />
+          <p class="tip">Reader waits until this element is rendered before returning.</p>
+        </div>
+        <div class="field">
+          <label for="removeSelector">Remove selector <span class="hint">(X-Remove-Selector)</span></label>
+          <input type="text" id="removeSelector" placeholder="e.g. .ads, .sidebar" />
+          <p class="tip">Reader removes matched elements before returning content.</p>
+        </div>
+      </section>
+
+      <!-- Advanced Features -->
+      <section class="card">
+        <h2>Advanced DOM & Tracking</h2>
+        <div class="field row">
+          <label class="toggle-label">
+            <input type="checkbox" id="withIframe" />
+            Include Iframes (X-With-Iframe)
+          </label>
+        </div>
+        <div class="field row">
+          <label class="toggle-label">
+            <input type="checkbox" id="withShadowDom" />
+            Include Shadow DOM (X-With-Shadow-Dom)
+          </label>
+        </div>
+        <div class="field">
+          <label for="chatSpaceId">Chat Space ID <span class="hint">(X-Chat-Space-Id)</span></label>
+          <input type="text" id="chatSpaceId" placeholder="e.g. your-space-id" />
+          <p class="tip">Used for Jina Chat tracking or integration.</p>
+        </div>
+      </section>
+
+      <!-- Chunking -->
+      <section class="card">
+        <h2>Markdown Chunking</h2>
+        <div class="field">
+          <label for="chunking">Chunking mode <span class="hint">(X-Markdown-Chunking)</span></label>
+          <select id="chunking">
+            <option value="">None — single blob (default)</option>
+            <option value="h1">h1 — split at H1</option>
+            <option value="h2">h2 — split at H1–H2</option>
+            <option value="h3">h3 — split at H1–H3</option>
+            <option value="h4">h4 — split at H1–H4</option>
+            <option value="h5">h5 — split at H1–H5</option>
+            <option value="s1">s1 — structured, coarsest</option>
+            <option value="s2">s2 — structured</option>
+            <option value="s3">s3 — structured</option>
+            <option value="s4">s4 — structured</option>
+            <option value="s5">s5 — structured, finest</option>
+          </select>
+          <p class="tip">Returns a JSON array of chunks instead of one blob.</p>
+        </div>
+      </section>
+
+      <!-- Token limits -->
+      <section class="card">
+        <h2>Token Limits</h2>
+        <div class="field">
+          <label for="maxTokens">Max tokens <span class="hint">(X-Max-Tokens, ≥500)</span></label>
+          <input type="number" id="maxTokens" min="500" placeholder="e.g. 4096" />
+          <p class="tip">Trim the response so it never exceeds this token count.</p>
+        </div>
+        <div class="field">
+          <label for="tokenBudget">Token budget <span class="hint">(X-Token-Budget, ≥500)</span></label>
+          <input type="number" id="tokenBudget" min="500" placeholder="e.g. 8192" />
+          <p class="tip">Reject the request if output would exceed this many tokens.</p>
+        </div>
+      </section>
+
+      <!-- Cache -->
+      <section class="card">
+        <h2>Cache</h2>
+        <div class="field row">
+          <label class="toggle-label">
+            <input type="checkbox" id="noCache" />
+            Bypass cache by default (X-No-Cache: true)
+          </label>
+        </div>
+      </section>
+
+      <div class="actions">
+        <button type="submit" class="btn-save">Save settings</button>
+        <button type="button" class="btn-reset" id="resetBtn">Reset to defaults</button>
+      </div>
+    </form>
+  </div>
+  <script src="options.js"></script>
+</body>
+</html>
