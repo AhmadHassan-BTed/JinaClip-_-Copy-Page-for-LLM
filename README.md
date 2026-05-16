@@ -1,63 +1,149 @@
+<div align="center">
+
 # 🚀 Jina Reader — Local Edition (v7)
+**Professional-Grade • Local-First • Privacy-Centric**
+
+*Transform any webpage into high-fidelity, LLM-friendly Markdown entirely within the browser.*
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Engine: Local-First](https://img.shields.io/badge/Engine-100%25_Local-orange.svg)](#-technical-excellence)
 [![Privacy: Zero-Cloud](https://img.shields.io/badge/Privacy-Zero_Tracking-green.svg)](#-privacy--security)
+[![Author: Ahmad Hassan](https://img.shields.io/badge/Architect-Ahmad_Hassan-795548.svg)](https://github.com/AhmadHassan-BTed)
 
-**Jina Reader (Local)** is a high-performance, professional-grade browser extension that transforms any webpage into clean, LLM-friendly Markdown entirely within your browser. **No APIs, no rate limits, and zero costs.**
+---
+**Designed for AI Workflows. Engineered for Privacy.**
+</div>
+
+## 🌐 The Philosophy
+In an era of cloud-dependency and rate-limited APIs, **Jina Reader (Local)** represents a pivot back to local-first computing. This project eliminates the middleman, removing the need for `r.jina.ai` cloud calls by implementing the entire extraction and transformation pipeline directly in the browser's runtime. Content remains local, speed is absolute, and usage is infinite.
 
 ---
 
-## 🌟 Why Local-First?
+## 🛠 Architectural Excellence
 
-Unlike traditional "Reader" tools that send your data to the cloud, this extension uses a sophisticated **Local Extraction Engine (v7)**.
-- **🚀 Absolute Speed:** Instant conversion without network latency.
-- **🔒 Private by Design:** Your content never leaves your browser. Ideal for sensitive docs and internal dashboards.
-- **♾️ Infinite Usage:** No Jina API keys, no monthly limits, and no "429 Too Many Requests" errors.
+The system is built on a modular, Service-Oriented Architecture (SOA) designed to handle the complexities of the modern web (Shadow DOM, dynamic iframes, and SPA layouts).
+
+### 1. High-Level System Flow
+The following diagram illustrates the lifecycle of a single "Copy" request, from the user's action to the final clipboard entry.
+
+```mermaid
+graph TD
+    User([User Action: Click/Hotkeys/Menu]) --> Orchestrator[Background Orchestrator]
+    Orchestrator --> Config[Config Service]
+    Config --> Service[LocalReaderService v7]
+    
+    subgraph "Target Tab Context"
+        Service -- Script Injection --> Engine[v7 Intelligence Engine]
+        Engine -- DOM Scoring --> Root[Content Root Discovery]
+        Root -- Cleaning --> Clone[Sanitized Clone]
+        Clone -- Conversion --> MD[Markdown/JSON/HTML]
+    end
+    
+    MD -- Message Passing --> Service
+    Service -- Clipboard API --> OS[System Clipboard]
+    Service -- Notification API --> User
+```
+
+### 2. The v7 Intelligence Engine
+At the heart of the project is the **Heuristic Scoring Engine**. Instead of "guessing" where the content is, it calculates a text-to-link density ratio and penalizes interactive "noise" (dashboards, buttons, navs).
+
+```mermaid
+sequenceDiagram
+    participant P as Web Page
+    participant E as Intelligence Engine
+    participant S as Scoring Module
+    participant C as Converter
+    
+    E->>P: Traverse DOM Tree
+    P-->>E: Candidate Elements (div, main, article)
+    E->>S: Compute (Text Density - Link Density)
+    S-->>E: Final Scores
+    E->>P: Flatten Shadow DOM & Iframes
+    E->>C: Execute Pro-Grade Markdown Conversion
+    C-->>E: LLM-Friendly Payload
+```
+
+---
+
+## 💎 Feature Matrix
+
+| Feature | Local Engine (v7) | Cloud Reader |
+| :--- | :---: | :---: |
+| **Privacy** | 🔒 100% Local | ☁️ Cloud Processed |
+| **Rate Limits** | ♾️ Infinite | ⚠️ Strictly Limited |
+| **Cost** | 💸 $0 | 💰 Token Based |
+| **Shadow DOM** | ✅ Supported | ❌ Limited |
+| **Table Formatting** | ✅ Pro Grade | ✅ Basic |
+| **Full Pageshots** | ✅ Stitched Canvas | ❌ N/A |
 
 ---
 
-## ✨ Professional Features
+## 📂 Repository Structure
 
-### 🧠 Intelligence Mode (v7 Engine)
-- **Heuristic Scoring:** Automatically identifies the "Main Content" of a page while ignoring navigation bars, ads, and login widgets.
-- **Native Table Support:** Perfectly converts HTML tables into clean Markdown tables with pipes (`|`) and dividers.
-- **Shadow DOM & Iframes:** Deep-traverses modern web components and embedded content that other scrapers miss.
-- **Sequential Image Labeling:** Automatically labels images as `![Image 1]`, `![Image 2]` for better LLM grounding.
-
-### 🛠 Power User Tools
-- **Deep Context Menu:** Right-click the extension icon to access advanced modes:
-  - **Copy with Links Summary:** Appends a structured link list at the end.
-  - **Copy with Image Captions:** Uses heuristic metadata to "describe" images to your LLM.
-  - **JSON Mode:** Returns a full structured payload (Title, URL, Content, Word Count).
-- **Stitched Pageshots:** Captures full-page, high-resolution screenshots by scrolling and stitching the viewport automatically.
-- **Keyboard Mastery:** Use `Alt+Shift+J` to instantly copy any page.
-
----
-
-## 🛠 Installation
-
-1. Clone or download this repository.
-2. Navigate to `chrome://extensions/` (or `edge://extensions/`).
-3. Enable **Developer mode** (top-right toggle).
-4. Click **Load unpacked** and select the `dist/` folder.
-5. Pin the **"J"** icon to your toolbar.
+```text
+p:/extensions/JinaClip - Copy Page for LLM/
+├── scripts/
+│   └── build.js          # Professional packaging pipeline
+├── src/
+│   ├── background/
+│   │   └── index.js      # Lifecycle & Event Orchestration
+│   ├── services/
+│   │   └── localReader.js # Core Extraction & Transformation Engine (v7)
+│   ├── utils/
+│   │   └── logger.js      # System-wide observability
+│   └── config/
+│       ├── constants.js   # Immutable definitions
+│       └── defaultSettings.js
+├── icons/                # High-fidelity visual assets
+└── manifest.json         # Extension Manifest (MV3)
+```
 
 ---
 
-## 📖 Technical Architecture
+## 🏗️ Technical Pipeline: Full Page Capture
+The "Pageshot" feature utilizes a multi-stage stitching pipeline to capture full-length articles without loss of detail.
 
-The extension follows a modular, service-oriented architecture designed for maximum reliability:
+1. **Dimension Analysis:** Calculates `scrollHeight` and `viewHeight`.
+2. **Synchronized Scrolling:** Executes discrete jumps with paint-settle delays.
+3. **Canvas Orchestration:** Assembles visible segments in a `OffscreenCanvas`.
+4. **Data Delivery:** Converts the final buffer to a high-quality Markdown-wrapped Base64 string.
 
-- **`LocalReaderService` (The Brain):** A standalone engine that handles DOM scoring, cleaning, and conversion.
-- **`Background Orchestrator`:** Manages the extension lifecycle, context menus, and global notifications.
-- **`Offscreen Stitching`:** Uses `OffscreenCanvas` to handle high-memory image processing in a separate thread.
+---
+
+## 🚀 Installation & Development
+
+### Onboarding for Contributors
+The codebase is written in vanilla ES6+ to ensure zero-coupling and maximum longevity.
+
+1. **Clone & Setup:**
+   ```powershell
+   git clone <repo-url>
+   npm install
+   ```
+2. **Build for Production:**
+   ```powershell
+   npm run build
+   ```
+3. **Browser Loading:**
+   - Open `chrome://extensions/`
+   - Load the `dist/` folder as an "Unpacked Extension."
 
 ---
 
-## 🤝 Open Source & Contributing
+## 📋 Professional Usage
 
-This project is open-source and owner-managed. We prioritize **Clean Code**, **Zero Coupling**, and **User Privacy**. Feel free to fork, modify, and build your own local-first AI pipelines!
+- **Quick Action:** Left-click the extension icon for a standard Markdown copy.
+- **Precision Extraction:** Right-click the icon to select specific formats (JSON, HTML, Text).
+- **Automation:** Use the Global Shortcut `Alt+Shift+J` for immediate capture.
 
 ---
-*Maintained by the Community. Proudly powered by the Local-First movement.*
+
+## ⚖️ Credits & License
+This project was architected and developed by **Ahmad Hassan (B-Ted)** as a part of the movement toward high-performance, local-first AI tools.
+
+Distributed under the **MIT License**. Contributions that align with the core philosophy of "Clean Code & User Privacy" are welcomed.
+
+---
+<div align="center">
+<i>"The best way to read the web is locally."</i>
+</div>
