@@ -1,12 +1,12 @@
 import { Logger } from '../utils/logger.js';
 
 /**
- * Advanced Local Jina Engine (v5 - Intelligence Mode)
- * Uses heuristic scoring to extract "Clean" content only.
+ * Advanced Local Jina Engine (v6 - Pro Grade)
+ * Implements Table support, Metadata headers, and Sequential Image labeling.
  */
 export const LocalReaderService = {
   async parsePage(tabId, config) {
-    Logger.info(`Local Engine (v5) Intelligence Mode starting...`);
+    Logger.info(`Local Engine (v6) Pro Grade starting...`);
 
     try {
       if (config.respondWith === 'screenshot' || config.respondWith === 'pageshot') {
@@ -28,23 +28,32 @@ export const LocalReaderService = {
       if (output.error) throw new Error(output.error);
 
       if (config.respondWith === 'json') return JSON.stringify(output, null, 2);
-      return output.content || '# No Content Found';
+      
+      // Construct the Final Pro-Grade Output
+      const meta = [
+        `Title: ${output.title}`,
+        `URL Source: ${output.url}`,
+        output.publishedTime ? `Published Time: ${output.publishedTime}` : null
+      ].filter(Boolean).join('\n');
+
+      return `${meta}\n\nMarkdown Content:\n${output.content}`;
     } catch (err) {
-      Logger.error('Local Engine v5 Error:', err);
+      Logger.error('Local Engine v6 Error:', err);
       throw err;
     }
   }
 };
 
 /**
- * Injected Script: Intelligence Mode
+ * Injected Script: Pro Grade Engine
  */
 function _engineCoreBody(cfg) {
   try {
     const title = document.title || 'Untitled Page';
     const url = window.location.href;
-    
-    // 1. Scoring Engine: Find the "best" content container
+    const publishedTime = document.querySelector('meta[property="article:published_time"]')?.content || null;
+
+    // 1. Scoring Engine (Improved for Dashboards)
     function getBestRoot() {
       const candidates = document.querySelectorAll('div, section, article, main, table');
       let best = document.body;
@@ -53,13 +62,12 @@ function _engineCoreBody(cfg) {
       candidates.forEach(el => {
         const text = el.innerText || '';
         const links = el.querySelectorAll('a').length;
-        if (text.length < 100) return; // Too small
+        if (text.length < 50) return;
 
-        // Score = Text length minus penalty for too many links
-        // (This naturally ignores Nav bars and Link lists)
-        let score = text.length / (links > 0 ? links * 0.5 : 1);
+        // Penalty for dashboard elements (buttons, inputs)
+        const inputs = el.querySelectorAll('input, button, select').length;
+        let score = (text.length / (links > 0 ? links * 0.4 : 1)) - (inputs * 20);
         
-        // Bonus for semantic tags
         if (['article', 'main'].includes(el.tagName.toLowerCase())) score *= 2;
 
         if (score > maxScore) {
@@ -73,50 +81,47 @@ function _engineCoreBody(cfg) {
     const root = cfg.targetSelector ? (document.querySelector(cfg.targetSelector) || getBestRoot()) : getBestRoot();
     const clone = root.cloneNode(true);
 
-    // 2. Aggressive Cleaning
-    const junk = [
-      'script', 'style', 'nav', 'footer', 'aside', '.ads', '.sidebar', 
-      '#header', '.menu', 'noscript', '.social', '.sharing'
-    ];
+    // 2. Pro Cleaning
+    const junk = ['script', 'style', 'nav', 'footer', 'aside', '.ads', 'noscript', '.menu'];
     junk.forEach(s => clone.querySelectorAll(s).forEach(el => el.remove()));
     
-    // Special: Remove tiny "utility" links like [hide], [login], [vote]
-    clone.querySelectorAll('a').forEach(a => {
-      if (a.innerText.trim().length < 2 && !a.querySelector('img')) a.remove();
-      const text = a.innerText.toLowerCase();
-      if (['hide', 'delete', 'report', 'flag', 'login'].includes(text)) a.remove();
-    });
+    // Remove "Material Icon" text clutter
+    clone.querySelectorAll('.material-icons, .material-symbols-outlined').forEach(el => el.remove());
 
-    // 3. Smart Markdown Converter
-    function nodeToMd(node, depth = 0) {
+    // 3. Advanced Markdown Converter (v6)
+    let imageCount = 0;
+    function nodeToMd(node) {
       let md = '';
-      const blockTags = ['p', 'div', 'section', 'article', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'tr'];
-      
       for (let child of node.childNodes) {
         if (child.nodeType === 3) {
           md += child.textContent.replace(/\s+/g, ' ');
         } else if (child.nodeType === 1) {
           const tag = child.tagName.toLowerCase();
-          let inner = nodeToMd(child, depth + 1).trim();
-          if (!inner && tag !== 'img' && tag !== 'br') continue;
+          
+          // --- Table Support ---
+          if (tag === 'table') {
+            md += `\n\n| ${Array.from(child.querySelectorAll('th, td')).map(cell => cell.innerText.trim()).join(' | ')} |\n| --- | --- |\n\n`;
+            continue;
+          }
+
+          let inner = nodeToMd(child).trim();
+          if (!inner && !['img', 'br', 'hr'].includes(tag)) continue;
 
           switch(tag) {
             case 'h1': md += `\n# ${inner}\n`; break;
             case 'h2': md += `\n## ${inner}\n`; break;
             case 'h3': md += `\n### ${inner}\n`; break;
-            case 'h4': case 'h5': case 'h6': md += `\n#### ${inner}\n`; break;
-            case 'p':  md += `\n${inner}\n`; break;
+            case 'p':  md += `\n\n${inner}\n\n`; break;
             case 'a':  md += `[${inner}](${child.href})`; break;
-            case 'img': md += `![${child.alt || 'img'}](${child.src})`; break;
+            case 'img': 
+              imageCount++;
+              md += `![Image ${imageCount}](${child.src})`; break;
             case 'li':  md += `\n* ${inner}`; break;
+            case 'hr':  md += `\n* * *\n`; break;
+            case 'strong': case 'b': md += `**${inner}**`; break;
             case 'code': md += ` \`${inner}\` `; break;
             case 'pre': md += `\n\`\`\`\n${inner}\n\`\`\`\n`; break;
-            case 'br': md += '\n'; break;
-            case 'table': md += `\n${inner}\n`; break;
-            case 'tr': md += `\n${inner}`; break;
-            case 'td': case 'th': md += ` | ${inner}`; break;
-            default:
-              md += blockTags.includes(tag) ? `\n${inner}\n` : inner;
+            default: md += inner;
           }
         }
       }
@@ -125,16 +130,17 @@ function _engineCoreBody(cfg) {
 
     const rawMd = nodeToMd(clone);
     const cleanedMd = rawMd
-      .replace(/\n{3,}/g, '\n\n') // Fix excessive spacing
+      .replace(/\n{3,}/g, '\n\n') // Fix spacing
       .replace(/^[ \t]+|[ \t]+$/gm, '') // Trim lines
       .trim();
 
     return {
       title,
       url,
-      content: `# ${title}\n\nURL: ${url}\n\n${cleanedMd}`
+      publishedTime,
+      content: cleanedMd
     };
   } catch (e) {
-    return { error: `Intelligence Engine Error: ${e.message}` };
+    return { error: `Pro Engine Error: ${e.message}` };
   }
 }
